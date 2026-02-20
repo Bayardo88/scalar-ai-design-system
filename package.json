@@ -1,0 +1,43 @@
+{
+  "name": "@scalar/design-system",
+  "version": "0.1.0",
+  "description": "Scalar Design System — token-driven React components and governance",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "logic", "globalai.md"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./tokens": {
+      "types": "./dist/tokens/index.d.ts",
+      "import": "./dist/tokens/index.mjs",
+      "require": "./dist/tokens/index.js"
+    }
+  },
+  "scripts": {
+    "build": "node scripts/generate-tokens-css.js && npx tsup && mkdir -p dist/styles && cp src/styles/tokens.css dist/styles/",
+    "validate:schema": "node scripts/validate-schema.js",
+    "validate:tokens": "node scripts/validate-tokens.js",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "prepublishOnly": "npm run validate:schema && npm run validate:tokens && npm run build",
+    "prepare": "husky"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-react": "^7.37.0",
+    "husky": "^9.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "license": "MIT"
+}
