@@ -8,35 +8,33 @@ Source Implementation:
 ---
 
 ## 1. Component Identity
+
 **Component:** Table  
 **Type:** ui  
-**Responsibility:** Renders structured table with optional header, column headers + data rows, and optional pagination.
+**Responsibility:** Renders structured tabular data with governed column behavior, viewport-aware header logic, column resizing, column reordering, dynamic column management, optional sticky total row, and optional sticky first column.
 
 ## 2. Intent Layer (WHY)
-Displays tabular data. Composes ColumnHeader, DataCell, optional TitleItemRow. Does not handle sorting logic internally (column config may pass onSortClick).
 
-## 3. Variant Layer (WHAT)
-Size (s | m | l) for cells. showHeader, showPagination (boolean). No semantic variants.
+The Table component provides a structured, interactive data surface.
 
-## 4. State Layer (WHEN)
-Static layout. Sort state is external. Default only for table container.
+It composes:
 
-## 5. Token Mapping Layer (HOW IT LOOKS)
-background-page, stroke-disable. Cell styling from ColumnHeader/DataCell tokens.
+- ColumnHeader
+- DataCell
+- Optional header section
+- Optional pagination
+- Optional TOTAL summary row
 
-## 6. Layout & Spacing Layer
-Sections: 1) header slot 2) table (grid) 3) pagination slot. Grid columns from column definitions.
+It governs:
 
-## 7. Typography Layer
-Inherited from ColumnHeader and DataCell by size.
+- Viewport-based sticky header logic
+- Column resizing behavior
+- Column reorder behavior
+- Column count synchronization
+- Dynamic column addition via knowledge base
+- Sticky TOTAL row
+- Sticky first column during horizontal scroll
 
-## 8. Behavioral Constraints (GUARDRAILS)
-CAN: render header, columns, rows, pagination, custom cell renderers. MUST NOT: invent column types, hardcode colors, add table-level interaction beyond column config.
+It does not implement business logic (sorting calculations, aggregation logic, filtering logic).
 
-## 9. Accessibility Layer
-Table semantics; headers and cells readable. Sort exposed via ColumnHeader.
-
-## 10. Anti-Patterns
-❌ Hardcoded colors ❌ Arbitrary layout ❌ Table-level click handlers
-
-END OF SCHEMA
+**END OF SCHEMA**

@@ -4,8 +4,8 @@
  * Source of truth (Figma):
  * https://www.figma.com/design/Z4MtKOfkNEzhMYJzN1q3kR/Scalar_Design_System-Components?node-id=225-3142&m=dev
  *
- * Three sections: Section 1 (Header), Section 2 (Table), Section 3 (Pagination).
- * Uses ColumnHeader, DataCell, and TitleItemRow. Header and Pagination are optional (booleans).
+ * Logic (authoritative): logic/table-schema-logic.md
+ * Governs: sticky header, sticky total row, sticky first column, column resize, column reorder, add column.
  *
  * Rules: public/AI-Rules.md
  * Tokens: design-tokens.scalar.ai.json (semantic tokens only; no hardcoded values)
@@ -19,18 +19,17 @@
  * The schema file is the authoritative contract.
  */
 
-import React from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { ColumnHeader } from './ColumnHeader';
 import { DataCell } from './DataCell';
+import { KNOWLEDGE_BASE_METRICS, type KnowledgeBaseMetricKey } from './knowledgeBaseMetrics';
 
-/** Semantic token names from design-tokens.scalar.ai.json */
 type SemanticVar = 'stroke-disable' | 'background-page';
 
 function varOf(name: SemanticVar): string {
   return `var(--${name})`;
 }
 
-/** Spacing tokens: xs, s, m, l, xl */
 const spacingVar = (t: 'xs' | 's' | 'm' | 'l' | 'xl') =>
   `var(--${t === 'xs' ? '4' : t === 's' ? '8' : t === 'm' ? '16' : t === 'l' ? '24' : '32'})`;
 
@@ -42,110 +41,318 @@ export interface TableColumn<T = Record<string, React.ReactNode>> {
   align?: 'left' | 'center' | 'right';
   sort?: 'asc' | 'desc';
   onSortClick?: () => void;
-  /** Optional width (e.g. "1fr", "var(--120)"). */
   width?: string;
-  /** Custom cell renderer; default is DataCell. */
   render?: (value: React.ReactNode, row: T) => React.ReactNode;
 }
 
 export interface TableProps<T = Record<string, React.ReactNode>> {
-  /** Section 1: optional header (e.g. TitleItemRow with table title). Shown when showHeader is true. */
   header?: React.ReactNode;
-  /** Show Section 1 (Header). Default true. */
   showHeader?: boolean;
-  /** Column definitions (used for Section 2). */
   columns: TableColumn<T>[];
-  /** Row data: array of objects keyed by column id. */
   rows: T[];
-  /** Section 3: optional pagination (custom content). Shown when showPagination is true. */
   pagination?: React.ReactNode;
-  /** Show Section 3 (Pagination). Default true. */
   showPagination?: boolean;
-  /** Cell size for ColumnHeader and DataCell. */
   size?: TableSize;
+  showTotalRow?: boolean;
+  enableColumnResize?: boolean;
+  enableAddColumn?: boolean;
+  enableColumnReorder?: boolean;
+  stickyFirstColumn?: boolean;
   className?: string;
 }
 
-/**
- * Table component. Section 1 = Header (optional), Section 2 = Table (ColumnHeader + DataCell rows), Section 3 = Pagination (optional).
- * All styling from design-tokens.scalar.ai.json. Theme: :root and [data-theme="dark"].
- */
 export function Table<T extends Record<string, React.ReactNode>>({
   header,
   showHeader = true,
-  columns,
+  columns: initialColumns,
   rows,
   pagination,
   showPagination = true,
   size = 'm',
+  showTotalRow = false,
+  enableColumnResize = false,
+  enableAddColumn = false,
+  enableColumnReorder = false,
+  stickyFirstColumn = false,
   className = '',
 }: TableProps<T>) {
-  const gridTemplateColumns = columns.map((c) => c.width ?? '1fr').join(' ');
 
-  const tableWrapperStyle: React.CSSProperties = {
+  /* ===============================
+     Column + Width State
+  ================================ */
+
+  const [columns, setColumns] = useState(initialColumns);
+  const [columnWidths, setColumnWidths] = useState(
+    initialColumns.map(col => col.width ?? '1fr')
+  );
+
+  /* ===============================
+     COLUMN REORDER (POINTER BASED)
+  ================================ */
+
+  const dragIndexRef = useRef<number | null>(null);
+
+  const handleDragStart = (index: number) => {
+    if (!enableColumnReorder) return;
+    dragIndexRef.current = index;
+  };
+
+  const handleDrop = (targetIndex: number) => {
+    if (!enableColumnReorder || dragIndexRef.current === null) return;
+
+    const sourceIndex = dragIndexRef.current;
+    dragIndexRef.current = null;
+
+    if (sourceIndex === targetIndex) return;
+
+    const updatedColumns = [...columns];
+    const updatedWidths = [...columnWidths];
+
+    const [movedCol] = updatedColumns.splice(sourceIndex, 1);
+    const [movedWidth] = updatedWidths.splice(sourceIndex, 1);
+
+    updatedColumns.splice(targetIndex, 0, movedCol);
+    updatedWidths.splice(targetIndex, 0, movedWidth);
+
+    setColumns(updatedColumns);
+    setColumnWidths(updatedWidths);
+  };
+
+  /* ===============================
+     COLUMN RESIZE
+  ================================ */
+
+  const resizeRef = useRef<{ index: number; startX: number; startWidth: number } | null>(null);
+
+  const handlePointerMove = useCallback((e: PointerEvent) => {
+    if (!resizeRef.current) return;
+
+    const { index, startX, startWidth } = resizeRef.current;
+    const delta = e.clientX - startX;
+    const newWidth = Math.max(startWidth + delta, 80);
+
+    setColumnWidths(prev => {
+      const updated = [...prev];
+      updated[index] = `${newWidth}px`;
+      return updated;
+    });
+  }, []);
+
+  const handlePointerUp = useCallback(() => {
+    resizeRef.current = null;
+    window.removeEventListener('pointermove', handlePointerMove);
+    window.removeEventListener('pointerup', handlePointerUp);
+  }, [handlePointerMove]);
+
+  const handleResizeStart = (index: number, e: React.PointerEvent) => {
+    if (!enableColumnResize) return;
+
+    const currentWidth = (e.currentTarget.parentElement as HTMLElement).offsetWidth;
+
+    resizeRef.current = {
+      index,
+      startX: e.clientX,
+      startWidth: currentWidth,
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+  };
+
+  const gridTemplateColumns = columnWidths.join(' ');
+
+  /* ===============================
+     Add Column Modal
+  ================================ */
+
+  const [showModal, setShowModal] = useState(false);
+
+  const addColumn = (key: string) => {
+    setColumns(prev => [...prev, { id: key, label: key }]);
+    setColumnWidths(prev => [...prev, '1fr']);
+    setShowModal(false);
+  };
+
+  /* ===============================
+     STYLES
+  ================================ */
+
+  const wrapperStyle: React.CSSProperties = {
     backgroundColor: varOf('background-page'),
     border: `1px solid ${varOf('stroke-disable')}`,
     borderRadius: spacingVar('s'),
-    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    overflowX: 'auto',
   };
 
-  const tableGridStyle: React.CSSProperties = {
+  const scrollContainerStyle: React.CSSProperties = {
+    overflowY: 'auto',
+    maxHeight: '100%',
+  };
+
+  const gridStyle: React.CSSProperties = {
     display: 'grid',
     gridTemplateColumns,
     minWidth: 0,
   };
 
+  const stickyHeaderStyle: React.CSSProperties = {
+    ...gridStyle,
+    position: 'sticky',
+    top: 0,
+    background: varOf('background-page'),
+    zIndex: 2,
+  };
+
+  const stickyTotalStyle: React.CSSProperties = {
+    ...gridStyle,
+    position: 'sticky',
+    bottom: 0,
+    background: varOf('background-page'),
+    borderTop: `1px solid ${varOf('stroke-disable')}`,
+    zIndex: 2,
+  };
+
+  const stickyFirstCellStyle: React.CSSProperties = {
+    position: 'sticky',
+    left: 0,
+    background: varOf('background-page'),
+    zIndex: 3,
+  };
+
   return (
-    <div
-      className={`ai-table ${className}`}
-      style={tableWrapperStyle}
-      role="region"
-      aria-label="Table"
-    >
-      {showHeader && header != null && (
-        <div className="ai-table__header" style={{ padding: spacingVar('s'), borderBottom: `1px solid ${varOf('stroke-disable')}` }}>
+    <div className={`ai-table ${className}`} style={wrapperStyle} role="region">
+
+      {showHeader && header && (
+        <div style={{ padding: spacingVar('s'), borderBottom: `1px solid ${varOf('stroke-disable')}` }}>
           {header}
         </div>
       )}
 
-      <div className="ai-table__section-2">
-        <div className="ai-table__header-row" style={tableGridStyle}>
-          {columns.map((col) => (
-            <ColumnHeader
+      <div style={scrollContainerStyle}>
+
+        {/* HEADER */}
+        <div style={stickyHeaderStyle}>
+          {columns.map((col, index) => (
+            <div
               key={col.id}
-              size={size}
-              align={col.align ?? 'left'}
-              sort={col.sort}
-              onSortClick={col.onSortClick}
-              bordered
+              style={{
+                position: 'relative',
+                ...(stickyFirstColumn && index === 0 ? stickyFirstCellStyle : {})
+              }}
+              onPointerDown={() => handleDragStart(index)}
+              onPointerUp={() => handleDrop(index)}
             >
-              {col.label}
-            </ColumnHeader>
+              <ColumnHeader
+                size={size}
+                align={col.align ?? 'left'}
+                sort={col.sort}
+                onSortClick={col.onSortClick}
+                bordered
+              >
+                {col.label}
+              </ColumnHeader>
+
+              {enableColumnResize && (
+                <div
+                  onPointerDown={(e) => handleResizeStart(index, e)}
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: 0,
+                    width: '4px',
+                    height: '100%',
+                    cursor: 'col-resize',
+                  }}
+                />
+              )}
+            </div>
           ))}
+
+          {enableAddColumn && (
+            <div>
+              <ColumnHeader onSortClick={() => setShowModal(true)}>
+                Add Column
+              </ColumnHeader>
+            </div>
+          )}
         </div>
+
+        {/* ROWS */}
         {rows.map((row, rowIndex) => (
-          <div key={rowIndex} className="ai-table__row" style={tableGridStyle}>
-            {columns.map((col) => {
-              const value = row[col.id];
-              const cell =
-                col.render != null ? (
-                  col.render(value, row)
-                ) : (
-                  <DataCell size={size} align={col.align ?? 'left'} bordered>
-                    {value}
-                  </DataCell>
-                );
-              return <React.Fragment key={col.id}>{cell}</React.Fragment>;
-            })}
+          <div key={rowIndex} style={gridStyle}>
+            {columns.map((col, colIndex) => (
+              <div
+                key={col.id}
+                style={
+                  stickyFirstColumn && colIndex === 0
+                    ? stickyFirstCellStyle
+                    : undefined
+                }
+              >
+                <DataCell size={size} align={col.align ?? 'left'} bordered>
+                  {col.render ? col.render(row[col.id], row) : row[col.id]}
+                </DataCell>
+              </div>
+            ))}
           </div>
         ))}
+
+        {/* TOTAL ROW */}
+        {showTotalRow && (
+          <div style={stickyTotalStyle}>
+            {columns.map((col, index) => (
+              <div
+                key={col.id}
+                style={
+                  stickyFirstColumn && index === 0
+                    ? stickyFirstCellStyle
+                    : undefined
+                }
+              >
+                <DataCell size={size} align={col.align ?? 'left'} bordered>
+                  TOTAL
+                </DataCell>
+              </div>
+            ))}
+          </div>
+        )}
+
       </div>
 
-      {showPagination && pagination != null && (
-        <div className="ai-table__pagination" style={{ padding: spacingVar('s'), borderTop: `1px solid ${varOf('stroke-disable')}` }}>
+      {showPagination && pagination && (
+        <div style={{ padding: spacingVar('s'), borderTop: `1px solid ${varOf('stroke-disable')}` }}>
           {pagination}
         </div>
       )}
+
+      {/* ADD COLUMN MODAL */}
+      {showModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: spacingVar('l'),
+            right: spacingVar('l'),
+            background: varOf('background-page'),
+            border: `1px solid ${varOf('stroke-disable')}`,
+            padding: spacingVar('m'),
+            maxHeight: '70vh',
+            overflowY: 'auto',
+          }}
+        >
+          {(Object.keys(KNOWLEDGE_BASE_METRICS) as KnowledgeBaseMetricKey[]).map(key => (
+            <div
+              key={key}
+              onClick={() => addColumn(key)}
+              style={{ padding: spacingVar('xs'), cursor: 'pointer' }}
+            >
+              {KNOWLEDGE_BASE_METRICS[key]}
+            </div>
+          ))}
+        </div>
+      )}
+
     </div>
   );
 }
