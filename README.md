@@ -66,6 +66,17 @@ Publishing will fail if schema or token validation fails.
 | `npm run lint` | ESLint (no hex, token-first rules) |
 | `npm run prepublishOnly` | validate:schema + validate:tokens + build |
 
+## GitHub setup (one-time)
+
+1. Create a new repository on GitHub named **scalar-ai-design-system** (Private, add README + MIT License + Node .gitignore if you want a fresh clone; otherwise use the existing folder).
+2. From this package root:
+   ```bash
+   git remote add origin https://github.com/YOUR_USERNAME/scalar-ai-design-system.git
+   git push -u origin main
+   git push origin v0.1.0
+   ```
+3. In GitHub: Settings → General → Default branch: **main**. CI runs on pull requests to `main`.
+
 ## License
 
 MIT
