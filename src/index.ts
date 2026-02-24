@@ -5,7 +5,7 @@
 
 export { AddMetricModal } from "./components/AddMetricModal";
 export { Avatar } from "./components/Avatar";
-export { Button } from "./components/Button";
+export { Button, type ButtonProps, type ButtonVariant, type ButtonSize } from "./components/Button";
 export { ButtonIcon } from "./components/ButtonIcon";
 export { Checkbox } from "./components/Checkbox";
 export { Chip } from "./components/Chip";

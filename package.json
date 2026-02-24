@@ -5,7 +5,11 @@
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
-  "files": ["dist", "logic", "globalai.md"],
+  "files": [
+    "dist",
+    "logic",
+    "globalai.md"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -19,6 +23,7 @@
     }
   },
   "scripts": {
+    "test": "vitest run",
     "build": "node scripts/generate-tokens-css.js && npx tsup && mkdir -p dist/styles && cp src/styles/tokens.css dist/styles/",
     "validate:schema": "node scripts/validate-schema.js",
     "validate:tokens": "node scripts/validate-tokens.js",
@@ -37,7 +42,8 @@
     "eslint-plugin-react": "^7.37.0",
     "husky": "^9.0.0",
     "tsup": "^8.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.18"
   },
   "license": "MIT"
 }

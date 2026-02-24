@@ -1,0 +1,43 @@
+/**
+ * Button styles — hover/pressed via stylesheet (no per-instance <style> injection).
+ * Uses internal runtime vars (--_btn-*) set inline by React from semantic tokens.
+ */
+.ai-button-root {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: none;
+  outline: none;
+  transition: background-color 120ms ease;
+}
+
+.ai-button-root:not(:disabled):not(.ai-button-loading):hover {
+  background-color: var(--_btn-bg-hover) !important;
+}
+
+.ai-button-root:not(:disabled):not(.ai-button-loading):active {
+  background-color: var(--_btn-bg-pressed) !important;
+}
+
+.ai-button-root:focus-visible {
+  outline: 2px solid var(--_btn-outline) !important;
+  outline-offset: 2px;
+}
+
+.ai-button-content-hidden {
+  visibility: hidden;
+}
+
+.ai-button-spinner-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-button-icon {
+  font-size: 1em;
+  color: inherit;
+}
