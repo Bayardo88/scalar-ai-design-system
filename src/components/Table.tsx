@@ -24,7 +24,10 @@ import { ColumnHeader } from './ColumnHeader';
 import { DataCell } from './DataCell';
 import { KNOWLEDGE_BASE_METRICS, type KnowledgeBaseMetricKey } from './knowledgeBaseMetrics';
 
-type SemanticVar = 'stroke-disable' | 'background-page';
+type SemanticVar =
+  | 'stroke-disable'
+  | 'background-page'
+  | 'neutral-100';
 
 function varOf(name: SemanticVar): string {
   return `var(--${name})`;
@@ -94,11 +97,13 @@ export function Table<T extends Record<string, React.ReactNode>>({
 
   const handleDragStart = (index: number) => {
     if (!enableColumnReorder) return;
+    if (enableAddColumn && index === columns.length - 1) return;
     dragIndexRef.current = index;
   };
 
   const handleDrop = (targetIndex: number) => {
     if (!enableColumnReorder || dragIndexRef.current === null) return;
+    if (enableAddColumn && targetIndex === columns.length) return;
 
     const sourceIndex = dragIndexRef.current;
     dragIndexRef.current = null;
@@ -159,7 +164,9 @@ export function Table<T extends Record<string, React.ReactNode>>({
     window.addEventListener('pointerup', handlePointerUp);
   };
 
-  const gridTemplateColumns = columnWidths.join(' ');
+  const gridTemplateColumns = enableAddColumn
+    ? [...columnWidths, 'auto'].join(' ')
+    : columnWidths.join(' ');
 
   /* ===============================
      Add Column Modal
@@ -178,23 +185,24 @@ export function Table<T extends Record<string, React.ReactNode>>({
   ================================ */
 
   const wrapperStyle: React.CSSProperties = {
+    width: '100%',
     backgroundColor: varOf('background-page'),
     border: `1px solid ${varOf('stroke-disable')}`,
-    borderRadius: spacingVar('s'),
+    borderRadius: 0, // REQUIRED — no rounded corners
     display: 'flex',
     flexDirection: 'column',
-    overflowX: 'auto',
+    overflow: 'hidden',
   };
 
   const scrollContainerStyle: React.CSSProperties = {
-    overflowY: 'auto',
-    maxHeight: '100%',
+    overflow: 'auto',
+    flex: 1,
   };
 
   const gridStyle: React.CSSProperties = {
     display: 'grid',
     gridTemplateColumns,
-    minWidth: 0,
+    width: '100%',
   };
 
   const stickyHeaderStyle: React.CSSProperties = {
@@ -211,14 +219,14 @@ export function Table<T extends Record<string, React.ReactNode>>({
     bottom: 0,
     background: varOf('background-page'),
     borderTop: `1px solid ${varOf('stroke-disable')}`,
-    zIndex: 2,
+    zIndex: 5,
   };
 
   const stickyFirstCellStyle: React.CSSProperties = {
     position: 'sticky',
     left: 0,
     background: varOf('background-page'),
-    zIndex: 3,
+    zIndex: 6,
   };
 
   return (
@@ -271,9 +279,16 @@ export function Table<T extends Record<string, React.ReactNode>>({
           ))}
 
           {enableAddColumn && (
-            <div>
-              <ColumnHeader onSortClick={() => setShowModal(true)}>
-                Add Column
+            <div
+              style={{
+                position: 'sticky',
+                right: 0,
+                zIndex: 4,
+                background: varOf('background-page'),
+              }}
+            >
+              <ColumnHeader onSortClick={() => setShowModal(true)} bordered>
+                Add Metric
               </ColumnHeader>
             </div>
           )}
@@ -296,6 +311,7 @@ export function Table<T extends Record<string, React.ReactNode>>({
                 </DataCell>
               </div>
             ))}
+            {enableAddColumn && <div />}
           </div>
         ))}
 
@@ -311,11 +327,26 @@ export function Table<T extends Record<string, React.ReactNode>>({
                     : undefined
                 }
               >
-                <DataCell size={size} align={col.align ?? 'left'} bordered>
+                <DataCell
+                  size={size}
+                  align={col.align ?? 'left'}
+                  bordered
+                  style={{ backgroundColor: varOf('neutral-100') }}
+                >
                   TOTAL
                 </DataCell>
               </div>
             ))}
+            {enableAddColumn && (
+              <div>
+                <DataCell
+                  size={size}
+                  align="left"
+                  bordered
+                  style={{ backgroundColor: varOf('neutral-100') }}
+                />
+              </div>
+            )}
           </div>
         )}
 

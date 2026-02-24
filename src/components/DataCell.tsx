@@ -55,6 +55,8 @@ export interface DataCellProps {
   variant?: 'primary' | 'secondary';
   /** Show bottom border. */
   bordered?: boolean;
+  /** Optional style to merge with root container. */
+  style?: React.CSSProperties;
   className?: string;
 }
 
@@ -68,6 +70,7 @@ export const DataCell: React.FC<DataCellProps> = ({
   size = 'm',
   variant = 'primary',
   bordered = true,
+  style,
   className = '',
 }) => {
   const typo = cellTypo(size);
@@ -86,6 +89,7 @@ export const DataCell: React.FC<DataCellProps> = ({
     letterSpacing: 'var(--letter-spacing-none)',
     color: textColor,
     minWidth: 0,
+    ...style,
   };
 
   return (
