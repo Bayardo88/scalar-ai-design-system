@@ -38,7 +38,7 @@ Theme requirements:
 
 ## 6. Layout & Spacing Layer
 
-inline-flex; gap spacing-s; padding by size; min height by size; border-radius m. Structure unchanged when loading (label reserved, spinner overlay).
+inline-flex; gap spacing-s; padding by size; min height by size; border-radius xs (4px). Structure unchanged when loading (label reserved, spinner overlay).
 
 ## 7. Typography Layer
 

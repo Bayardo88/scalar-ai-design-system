@@ -33,8 +33,8 @@ export type { ButtonVariant };
 const spacingVar = (t: 'xs' | 's' | 'm' | 'l' | 'xl') =>
   `var(--${t === 'xs' ? '4' : t === 's' ? '8' : t === 'm' ? '16' : t === 'l' ? '24' : '32'})`;
 
-/** Corner radius token (e.g. rounded-m). */
-const radiusVar = () => `var(--16)`;
+/** Corner radius token XS (4px). */
+const radiusVar = () => `var(--4)`;
 
 export type ButtonSize = 's' | 'm' | 'l';
 
