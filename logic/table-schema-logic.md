@@ -11,11 +11,13 @@ Source Implementation:
 
 **Component:** Table  
 **Type:** ui  
-**Responsibility:** Renders structured tabular data with governed column behavior, viewport-aware sticky header logic, viewport-pinned total row, dynamic metric column management, and column interaction behaviors.
+**Responsibility:** Renders structured tabular data with governed column behavior, viewport-aware sticky header logic, viewport-pinned total row, column resizing, column reordering, and dynamic metric column management.
+
+---
 
 ## 2. Intent Layer (WHY)
 
-The Table component provides a full-width structured interactive data surface.
+The Table component provides a structured, interactive data surface.
 
 It composes:
 
@@ -24,52 +26,99 @@ It composes:
 - Optional header section
 - Optional pagination
 - Optional TOTAL summary row
+- Optional Add Metric column + modal
+
+It governs:
+
+- Viewport-based sticky header behavior
+- Viewport-based sticky total row behavior
+- Column resizing behavior
+- Column reorder behavior
+- Column width bookkeeping
+- Dynamic metric column addition from knowledge base
+
+It does not implement business logic (sorting computations, aggregation logic, filtering logic).
+
+---
 
 ## 3. Layout Contract (MANDATORY)
 
 The Table component MUST:
 
-- Render at 100% width of its container.
-- Have no border radius.
-- Maintain a sticky header pinned to the top of the scroll viewport.
-- Maintain a TOTAL row pinned to the bottom of the scroll viewport.
-- Use the Neutral100 semantic token for TOTAL row DataCell background.
-- Maintain an "Add Metric" column:
-  - Always positioned at the far right edge
-  - Sticky to the right during horizontal scroll
-  - Not reorderable
-  - Not resizable
-  - Not part of column state
-- Support horizontal scroll without breaking sticky first column.
-- Support sticky first column when enabled.
+1. Render at 100% width of its container.
+2. Have no border radius.
+3. Provide a single scroll viewport for table content.
+4. Keep header row sticky to the top of the scroll viewport.
+5. Keep total row sticky to the bottom of the scroll viewport when enabled.
+6. Maintain consistent column widths across header, body, and total row.
 
-## 4. Interaction Governance
+### Full-viewport width behavior (ported from prototype)
 
-### Column Resize
+- The Table MUST behave as if:
+  - `tableWidth = max(sum(columnWidths), containerWidth)`
+- If total fixed column width is less than the container width, the layout MUST stretch so the last column does not float mid-screen.
 
-- Each data column MUST support pointer-based resize.
-- Minimum width: 80px.
-- Resize must not affect Add Metric column.
-- Resize must update gridTemplateColumns state.
+---
 
-### Column Reorder
+## 4. Add Metric Column (dynamic column management)
 
-- Columns MUST be reorderable via pointer drag.
-- Reorder must:
-  - Update both column state and width state
-  - Preserve Add Metric column position
-- Add Metric column MUST NOT be draggable.
+When enabled, the Table MUST render an "Add Metric" column at the end.
 
-## 5. Sticky Behavior
+The Add Metric column MUST:
 
-| Element | Positioning | Z-Index Priority |
-|---------|-------------|------------------|
-| Sticky Header | top: 0 | 2 |
-| Sticky First Column | left: 0 | 6 |
-| Add Metric Column | right: 0 | 4 |
-| Total Row | bottom: 0 | 5 |
+- Be rendered as a dedicated final column (not merged into normal data column state).
+- Open an Add Metric modal on activation.
+- Maintain a stable width.
+- NOT be resizable.
 
-## 6. Business Logic Boundary
+Modal requirements (ported from prototype):
+
+- Modal MUST be positioned relative to the Add Metric header cell when anchor geometry is available.
+- Modal MUST close on:
+  - Escape key
+  - Click outside
+- Modal MUST support metric search filtering.
+- Modal MUST prevent adding metrics that are already present.
+
+---
+
+## 5. Column Resize Governance (ported behavior)
+
+When resizing is enabled:
+
+- Each non-Add-Metric column MUST expose a 4px resize handle at its right edge.
+- Resize interaction MUST:
+  - Use global pointer/mouse move and up listeners (document-level) so resizing continues outside the header cell bounds.
+  - Lock cursor to `col-resize` and disable text selection during drag.
+  - Apply delta updates incrementally on each move.
+- Minimum column width MUST be enforced (>= 80px unless otherwise specified by tokens/rules).
+
+---
+
+## 6. Column Reorder Governance
+
+When column reordering is enabled:
+
+- Columns MUST be reorderable by dragging.
+- Reorder MUST update column order state.
+- Reorder MUST be suppressed while a resize gesture is active.
+- Add Metric column MUST NOT be reorderable.
+
+---
+
+## 7. Sticky Behavior
+
+- Sticky header z-index MUST remain above body rows.
+- Sticky first column (if enabled) MUST remain above both body and header cells at intersection points.
+- Sticky total row MUST remain above body rows.
+
+Total row background:
+
+- Total row DataCell background MUST use the Neutral100 semantic token.
+
+---
+
+## 8. Business Logic Boundary
 
 The Table component does NOT implement:
 
@@ -78,34 +127,4 @@ The Table component does NOT implement:
 - Filtering logic
 - Data transformation logic
 
-It strictly governs layout and interaction behavior.
-
-## 7. Authoritative Constraints
-
-The schema is the authoritative behavioral contract.
-
-Any deviation from:
-
-- Full width layout
-- Sticky TOTAL row
-- Add Metric right pinning
-- Neutral100 token usage
-- Non-reorderable Add Metric
-- Non-resizable Add Metric
-
-Is a schema violation.
-
----
-
-## Summary of What Is Now Enforced
-
-- ✔ Full-width layout
-- ✔ No rounded corners
-- ✔ Sticky header
-- ✔ Sticky total row at viewport bottom
-- ✔ Total row uses Neutral100
-- ✔ Add Metric always pinned right
-- ✔ Add Metric not reorderable
-- ✔ Add Metric not resizable
-- ✔ Columns resizable
-- ✔ Columns reorderable
+**END OF SCHEMA**
